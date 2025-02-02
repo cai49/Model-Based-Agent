@@ -65,16 +65,16 @@ def random_walk() -> int:
 #endregion
 
 #region Rendering stuff
-def render_text(surface: pygame.surface.Surface, font: pygame.font.Font, text: str, position:list[float], color=pygame.Color("white")):
+def render_text(surface: pygame.surface.Surface, font: pygame.font.Font, text: str, text_position:list[float], color=pygame.Color("white")):
     _render_text = font.render(text, True, color)
     _text_pos = _render_text.get_rect()
-    _text_pos = _text_pos.move(position[0], position[1])
+    _text_pos = _text_pos.move(text_position[0], text_position[1])
     surface.blit(_render_text, _text_pos)
 
-def render_text_centered(surface: pygame.surface.Surface, font: pygame.font.Font, text: str, position:list[float], color=pygame.Color("white")):
+def render_text_centered(surface: pygame.surface.Surface, font: pygame.font.Font, text: str, text_position:list[float], color=pygame.Color("white")):
     _render_text = font.render(text, True, color)
     _text_pos = _render_text.get_rect()
-    _text_pos = _text_pos.move(position[0]-_render_text.get_width()/2, position[1]-_render_text.get_height()/2)
+    _text_pos = _text_pos.move(text_position[0] - _render_text.get_width() / 2, text_position[1] - _render_text.get_height() / 2)
     surface.blit(_render_text, _text_pos)
 
 is_rendering_gui = True
