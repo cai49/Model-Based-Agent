@@ -7,12 +7,15 @@ import pygame
 
 pygame.init()
 
+# Screen stuff
 width, height = 600, 600
 screen = pygame.display.set_mode((width, height))
 pygame.display.set_caption("Test Window")
 
+# Game stuff
 clock = pygame.time.Clock()
 
+# Surfaces
 bg = pygame.Surface(screen.get_size())
 bg = bg.convert()
 bg.fill((0,0,0))
@@ -20,23 +23,50 @@ bg.fill((0,0,0))
 gui = pygame.Surface(screen.get_size(), pygame.SRCALPHA)
 gui.fill(pygame.Color(0,0,0,0))
 
-cell_number = 5
-cell_size: int = floor(width / cell_number)
-padding = cell_size / 2
+path = pygame.Surface(screen.get_size(), pygame.SRCALPHA)
+path.fill(pygame.Color(0,0,0,0))
 
+# Customizable number of cells stuff
+CELL_NUMBER = 3
+CELL_SIZE: int = floor(width / CELL_NUMBER)
+PADDING = CELL_SIZE / 2
+
+# Fonts
 grid_font = pygame.font.Font(None, 40)
 
+#region Agent State Machine stuff
 AGENT_THINK: int = 0
 AGENT_CLEAN: int = 1
-AGENT_MOVE: int = 2
+AGENT_MOVE:  int = 2
+AGENT_IDLE:  int = 3
 
 AGENT_STATE: int = AGENT_THINK
+#endregion
 
-tiles_map = np.random.randint(2, size=(cell_number, cell_number))
-memory_map = np.zeros((cell_number, cell_number), dtype=int)
+#region Tiles and Agent memory stuff
+tiles_map = np.random.randint(2, size=(CELL_NUMBER, CELL_NUMBER))
+memory_map = np.zeros((CELL_NUMBER, CELL_NUMBER), dtype=int)
 position = [0, 0]
-position_map = [position]
+position_map: list[tuple[int, int]] = [(position[0], position[1])]
+#endregion
 
+#region Agent cardinal directions and moving 'engine'
+WALK_NORTH: int = 0
+WALK_EAST:  int = 1
+WALK_SOUTH: int = 2
+WALK_WEST:  int = 3
+
+def random_walk() -> int:
+    direction = np.random.choice([
+        WALK_NORTH,
+        WALK_EAST,
+        WALK_SOUTH,
+        WALK_WEST
+    ])
+    return direction
+#endregion
+
+#region Rendering stuff
 def render_text(surface: pygame.surface.Surface, font: pygame.font.Font, text: str, position:list[float], color=pygame.Color("white")):
     _render_text = font.render(text, True, color)
     _text_pos = _render_text.get_rect()
@@ -61,20 +91,33 @@ def render_map():
             memory_tile = "X" if memory_map[_ix][_jy] == 1 else "?"
 
             if _tile != 0:
-                pygame.draw.rect(bg, pygame.Color("white"), pygame.Rect(_ix * cell_size, _jy * cell_size, cell_size, cell_size), 0)
-                render_text_centered(bg, grid_font, memory_tile, [_ix * cell_size + padding, _jy * cell_size + padding + grid_font.size(memory_tile)[1]/2], pygame.Color("black"))
-                render_text_centered(bg, grid_font, str(_tile), [_ix * cell_size + padding, _jy * cell_size + padding - grid_font.size(str(_tile))[1]/2], pygame.Color("black"))
+                pygame.draw.rect(bg, pygame.Color("white"), pygame.Rect(_ix * CELL_SIZE, _jy * CELL_SIZE, CELL_SIZE, CELL_SIZE), 0)
+                render_text_centered(bg, grid_font, memory_tile, [_ix * CELL_SIZE + PADDING, _jy * CELL_SIZE + PADDING + grid_font.size(memory_tile)[1] / 2], pygame.Color("black"))
+                render_text_centered(bg, grid_font, str(_tile), [_ix * CELL_SIZE + PADDING, _jy * CELL_SIZE + PADDING - grid_font.size(str(_tile))[1] / 2], pygame.Color("black"))
             else:
-                pygame.draw.rect(bg, pygame.Color("black"), pygame.Rect(_ix * cell_size, _jy * cell_size, cell_size, cell_size), 0)
-                render_text_centered(bg, grid_font, memory_tile, [_ix * cell_size + padding, _jy * cell_size + padding + grid_font.size(memory_tile)[1]/2], pygame.Color("white"))
-                render_text_centered(bg, grid_font, str(_tile), [_ix * cell_size + padding, _jy * cell_size + padding - grid_font.size(str(_tile))[1]/2], pygame.Color("white"))
+                pygame.draw.rect(bg, pygame.Color("black"), pygame.Rect(_ix * CELL_SIZE, _jy * CELL_SIZE, CELL_SIZE, CELL_SIZE), 0)
+                render_text_centered(bg, grid_font, memory_tile, [_ix * CELL_SIZE + PADDING, _jy * CELL_SIZE + PADDING + grid_font.size(memory_tile)[1] / 2], pygame.Color("white"))
+                render_text_centered(bg, grid_font, str(_tile), [_ix * CELL_SIZE + PADDING, _jy * CELL_SIZE + PADDING - grid_font.size(str(_tile))[1] / 2], pygame.Color("white"))
 
-            pygame.draw.rect(bg, pygame.Color("grey50"), pygame.Rect(_ix * cell_size, _jy * cell_size, cell_size, cell_size), 2)
+            pygame.draw.rect(bg, pygame.Color("grey50"), pygame.Rect(_ix * CELL_SIZE, _jy * CELL_SIZE, CELL_SIZE, CELL_SIZE), 2)
+
+def render_agent_current_pos():
+    point_position = (int(position[0] * CELL_SIZE + CELL_SIZE / 4), int(position[1] * CELL_SIZE + CELL_SIZE / 2))
+    pygame.draw.circle(path, pygame.Color("red"), point_position, 10)
+#endregion
+
+#region Debugging stuff
+is_debugging = False
+def debug_log(text: str):
+    if is_debugging:
+        print(text)
+#endregion
 
 delay_counter = -1
 running = True
+
 while running:
-    clock.tick(30)
+    clock.tick(100)
 
     screen.fill(pygame.Color("black"))
     gui.fill(pygame.Color(0,0,0,0))
@@ -89,17 +132,34 @@ while running:
             is_rendering_gui = True
         elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
             is_rendering_gui = False
+        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 3:
+            is_debugging = True
+        elif event.type == pygame.MOUSEBUTTONUP and event.button == 3:
+            is_debugging = False
+
+    render_map()
+    render_agent_current_pos()
 
     if is_rendering_gui:
         render_gui()
 
-    render_map()
-
+    #region Agent Processing
     if delay_counter == -1:
         match AGENT_STATE:
             case 0: # AGENT_THINK
-                print("AGENT_THINK")
+                debug_log("AGENT_THINK")
                 new_memory_map = memory_map.copy()
+
+                accum = 0
+                for i, tile_row in enumerate(memory_map):
+                    for j, tile in enumerate(tile_row):
+                        accum += tile-1
+
+                if accum == 0:
+                    AGENT_STATE = AGENT_IDLE
+                    delay_counter = 3
+                    continue
+
                 for i, tile_row in enumerate(memory_map):
                     for j, tile in enumerate(tile_row):
                         if i == position[0] and j == position[1]:
@@ -108,10 +168,9 @@ while running:
 
                             memory_map = new_memory_map.copy()
                             AGENT_STATE = AGENT_CLEAN
-                            delay_counter = 10
-                            break
+                            delay_counter = 3
             case 1: # AGENT_CLEAN
-                print("AGENT_CLEAN")
+                debug_log("AGENT_CLEAN")
                 new_tile_map = tiles_map.copy()
                 for i, tile_row in enumerate(tiles_map):
                     for j, tile in enumerate(tile_row):
@@ -119,20 +178,72 @@ while running:
                             if tile == 0:
                                 new_tile_map[i, j] = 1
 
-                            AGENT_STATE = AGENT_CLEAN
-                            delay_counter = 10
-                            break
+                            delay_counter = 3
                 tiles_map = new_tile_map.copy()
                 AGENT_STATE = AGENT_MOVE
-                delay_counter = 15
+                delay_counter = 5
             case 2: # AGENT_MOVE
-                print("AGENT_MOVE")
+                debug_log("AGENT_MOVE")
+
+                move_direction = random_walk()
+
+                x_position = position[0]
+                y_position = position[1]
+                match move_direction:
+                    case 0: # North
+                        y_position = y_position + 1
+                    case 1: # East
+                        x_position = x_position + 1
+                    case 2: # South
+                        y_position = y_position - 1
+                    case 3: # West
+                        x_position = x_position - 1
+
+                def cylindrical_coordinates():
+                    global x_position, y_position
+                    # Fix for cylindrical coordinates
+                    if x_position < 0:
+                        x_position = len(tiles_map[0])-1
+                    elif x_position >= len(tiles_map):
+                        x_position = 0
+
+                    if y_position < 0:
+                        y_position = len(tiles_map[0])-1
+                    elif y_position >= len(tiles_map):
+                        y_position = 0
+
+                def non_cylindrical_coordinates():
+                    global x_position, y_position
+                    if x_position < 0:
+                        x_position = 0
+                    elif x_position >= len(tiles_map):
+                        x_position = len(tiles_map)-1
+
+                    if y_position < 0:
+                        y_position = 0
+                    elif y_position >= len(tiles_map):
+                        y_position = len(tiles_map)-1
+
+                non_cylindrical_coordinates()
+                # cylindrical_coordinates()
+
+                position = [x_position, y_position]
+                position_map.append((position[0], position[1]))
+
                 AGENT_STATE = AGENT_THINK
-                delay_counter = 30
+                delay_counter = 10
+            case 3: # AGENT_IDLE
+                debug_log("AGENT_IDLE")
+                pygame.draw.rect(gui, pygame.Color("white"), pygame.Rect(0, height/2-30, width, 60), 0)
+                render_text_centered(gui, grid_font, "House Cleaned", [width/2, height/2], color=pygame.Color("brown1"))
+                pygame.time.delay(100)
     else:
         delay_counter -= 1
+    #endregion
 
     screen.blit(bg, (0, 0))
+    screen.blit(path, (0, 0))
+    path.fill(pygame.Color(0,0,0,0))
     screen.blit(gui, (0, 0))
 
     pygame.display.flip()
