@@ -1,12 +1,16 @@
 from math import floor
 
+import seaborn as sns
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+
 import numpy as np
 import pygame
 
 pygame.init()
 
 # Screen stuff
-width, height = 600, 600
+width, height = 800, 800    # NEEDS TO BE SQUARE
 screen = pygame.display.set_mode((width, height))
 pygame.display.set_caption("Test Window")
 
