@@ -25,7 +25,7 @@ path = pygame.Surface(screen.get_size(), pygame.SRCALPHA)
 path.fill(pygame.Color(0,0,0,0))
 
 # Customizable number of cells stuff
-CELL_NUMBER = 5
+CELL_NUMBER = 7
 CELL_SIZE: int = floor(width / CELL_NUMBER)
 PADDING = CELL_SIZE / 2
 
@@ -43,25 +43,129 @@ AGENT_STATE: int = AGENT_THINK
 
 #region Tiles and Agent memory stuff
 tiles_map = np.random.randint(2, size=(CELL_NUMBER, CELL_NUMBER))
+# tiles_map = np.zeros((CELL_NUMBER, CELL_NUMBER), dtype=int)
 memory_map = np.zeros((CELL_NUMBER, CELL_NUMBER), dtype=int)
 position = [0, 0]
 position_map: list[tuple[int, int]] = [(position[0], position[1])]
 #endregion
 
-#region Agent cardinal directions and moving 'engine'
+#region Agent cardinal directions and various moving 'engine'
 WALK_NORTH: int = 0
 WALK_EAST:  int = 1
 WALK_SOUTH: int = 2
 WALK_WEST:  int = 3
 
-def random_walk() -> int:
+# A random walk is very inefficient
+def random_walk(cylindrical_space:bool=False) -> list[int]:
     direction = np.random.choice([
         WALK_NORTH,
         WALK_EAST,
         WALK_SOUTH,
         WALK_WEST
     ])
-    return direction
+
+    x_position = position[0]
+    y_position = position[1]
+    match direction:
+        case 0: # North
+            y_position = y_position + 1
+        case 1: # East
+            x_position = x_position + 1
+        case 2: # South
+            y_position = y_position - 1
+        case 3: # West
+            x_position = x_position - 1
+
+    if cylindrical_space:
+        # Fix for cylindrical coordinates
+        if x_position < 0:
+            x_position = len(tiles_map)-1
+        elif x_position >= len(tiles_map):
+            x_position = 0
+
+        if y_position < 0:
+            y_position = len(tiles_map)-1
+        elif y_position >= len(tiles_map):
+            y_position = 0
+    else:
+        if x_position < 0:
+            x_position = 0
+        elif x_position >= len(tiles_map):
+            x_position = len(tiles_map)-1
+
+        if y_position < 0:
+            y_position = 0
+        elif y_position >= len(tiles_map):
+            y_position = len(tiles_map)-1
+
+    return [x_position, y_position]
+
+def heuristic_walk() -> list[int]:
+    q_weight = 1 # ? = 2
+    d_weight = 2 # dirty_tile = 1
+
+    x_accum = 0
+    y_accum = 0
+    for iw, w_memory_row in enumerate(memory_map):
+        for jw, w_memory_tile in enumerate(w_memory_row):
+            if iw == position[0]:
+                continue
+
+            if iw < position[0]:
+                if tiles_map[iw][jw] == 0:
+                    x_accum = x_accum - d_weight
+                if memory_map[iw][jw] == 0:
+                    x_accum = x_accum - q_weight
+            else:
+                if tiles_map[iw][jw] == 0:
+                    x_accum = x_accum + d_weight
+                if memory_map[iw][jw] == 0:
+                    x_accum = x_accum + q_weight
+
+    for iw, w_memory_row in enumerate(memory_map):
+        for jw, w_memory_tile in enumerate(w_memory_row):
+            if jw == position[1]:
+                continue
+
+            if jw < position[1]:
+                if tiles_map[iw][jw] == 0:
+                    y_accum = y_accum - d_weight
+                if memory_map[iw][jw] == 0:
+                    y_accum = y_accum - q_weight
+            else:
+                if tiles_map[iw][jw] == 0:
+                    y_accum = y_accum + d_weight
+                if memory_map[iw][jw] == 0:
+                    y_accum = y_accum + q_weight
+
+    x_position = position[0]
+    y_position = position[1]
+    if x_accum >= y_accum:
+        if x_accum < 0:
+            x_position = x_position - 1
+            if x_position < 0:
+                x_position = 0
+        else:
+            x_position = x_position + 1
+            if x_position >= len(tiles_map)-1:
+                x_position = len(tiles_map)-1
+    else:
+        if y_accum < 0:
+            y_position = y_position - 1
+            if y_position < 0:
+                y_position = 0
+        else:
+            y_position = y_position + 1
+            if y_position >= len(tiles_map)-1:
+                y_position = len(tiles_map)-1
+
+    r_walk = random_walk()
+
+    x_position = np.random.choice([r_walk[0], x_position])
+    y_position = np.random.choice([r_walk[1], y_position])
+
+    print(x_position, y_position)
+    return [x_position, y_position]
 #endregion
 
 #region Rendering stuff
@@ -77,7 +181,7 @@ def render_text_centered(surface: pygame.surface.Surface, font: pygame.font.Font
     _text_pos = _text_pos.move(text_position[0] - _render_text.get_width() / 2, text_position[1] - _render_text.get_height() / 2)
     surface.blit(_render_text, _text_pos)
 
-is_rendering_gui = True
+is_rendering_gui = False
 def render_gui():
     render_text(gui, grid_font, str(floor(clock.get_fps())), [5, 5], color=pygame.Color("fuchsia"))
     render_text(gui, grid_font, f"DC: {delay_counter}, ST: {AGENT_STATE}", [5, height - 30], color=pygame.Color("fuchsia"))
@@ -113,7 +217,6 @@ def debug_log(text: str):
 
 delay_counter = -1
 running = True
-
 while running:
     clock.tick(100)
 
@@ -183,49 +286,9 @@ while running:
             case 2: # AGENT_MOVE
                 debug_log("AGENT_MOVE")
 
-                move_direction = random_walk()
+                move_direction = heuristic_walk()
 
-                x_position = position[0]
-                y_position = position[1]
-                match move_direction:
-                    case 0: # North
-                        y_position = y_position + 1
-                    case 1: # East
-                        x_position = x_position + 1
-                    case 2: # South
-                        y_position = y_position - 1
-                    case 3: # West
-                        x_position = x_position - 1
-
-                def cylindrical_coordinates():
-                    global x_position, y_position
-                    # Fix for cylindrical coordinates
-                    if x_position < 0:
-                        x_position = len(tiles_map[0])-1
-                    elif x_position >= len(tiles_map):
-                        x_position = 0
-
-                    if y_position < 0:
-                        y_position = len(tiles_map[0])-1
-                    elif y_position >= len(tiles_map):
-                        y_position = 0
-
-                def non_cylindrical_coordinates():
-                    global x_position, y_position
-                    if x_position < 0:
-                        x_position = 0
-                    elif x_position >= len(tiles_map):
-                        x_position = len(tiles_map)-1
-
-                    if y_position < 0:
-                        y_position = 0
-                    elif y_position >= len(tiles_map):
-                        y_position = len(tiles_map)-1
-
-                non_cylindrical_coordinates()
-                # cylindrical_coordinates()
-
-                position = [x_position, y_position]
+                position = [move_direction[0], move_direction[1]]
                 position_map.append((position[0], position[1]))
 
                 AGENT_STATE = AGENT_THINK
