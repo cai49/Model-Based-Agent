@@ -101,8 +101,8 @@ def random_walk(cylindrical_space:bool=False) -> list[int]:
     return [x_position, y_position]
 
 def heuristic_walk() -> list[int]:
-    q_weight = np.random.randint(1, 100) # ? = 5
-    d_weight = np.random.randint(1, 2) # dirty_tile = 2
+    q_weight = np.random.randint(1, 10) # ? = 5
+    d_weight = np.random.randint(3) # dirty_tile = 2
 
     y_accum = 0
     x_accum = 0
@@ -111,42 +111,24 @@ def heuristic_walk() -> list[int]:
             if iw == position[0] and jw == position[1]:
                 continue
 
-            _top_left = [max(iw-1, 0),max(jw-1, 0)]
-            _top_middle = [iw,max(jw-1, 0)]
-            _top_right = [min(iw+1, CELL_NUMBER-1),max(jw-1, 0)]
+            if iw < position[0]:
+                x_accum = x_accum - (1-tiles_map[iw][jw]) * d_weight
+                x_accum = x_accum - (1-memory_map[iw][jw]) * q_weight
+            elif iw > position[0]:
+                x_accum = x_accum + (1-tiles_map[iw][jw]) * d_weight
+                x_accum = x_accum + (1-memory_map[iw][jw]) * q_weight
 
-            _middle_left = [max(iw-1, 0),jw]
-            _middle_right = [min(iw+1, CELL_NUMBER-1),jw]
-
-            _down_left = [max(iw-1, 0),min(jw+1, CELL_NUMBER-1)]
-            _down_middle = [iw,min(jw-1, CELL_NUMBER-1)]
-            _down_right = [min(iw+1, CELL_NUMBER-1),min(jw+1, CELL_NUMBER-1)]
-
-            top_items = [_top_left, _top_middle, _top_right]
-            right_items = [_top_right, _middle_right, _down_right]
-            down_items = [_down_left, _down_middle, _down_right]
-            left_items = [_top_left, _middle_left, _down_left]
-
-            for t in top_items:
-                y_accum = y_accum + (1-tiles_map[t[0]][t[1]]) * d_weight
-                y_accum = y_accum + (1-memory_map[t[0]][t[1]]) * q_weight
-
-            for r in right_items:
-                x_accum = x_accum + (1-tiles_map[r[0]][r[1]]) * d_weight
-                x_accum = x_accum + (1-memory_map[r[0]][r[1]]) * q_weight
-
-            for d in down_items:
-                y_accum = y_accum - (1-tiles_map[d[0]][d[1]]) * d_weight
-                y_accum = y_accum - (1-memory_map[d[0]][d[1]]) * q_weight
-
-            for l in left_items:
-                x_accum = x_accum - (1-tiles_map[l[0]][l[1]]) * d_weight
-                x_accum = x_accum - (1-memory_map[l[0]][l[1]]) * q_weight
+            if jw < position[1]:
+                y_accum = y_accum - (1-tiles_map[iw][jw]) * d_weight
+                y_accum = y_accum - (1-memory_map[iw][jw]) * q_weight
+            elif jw > position[1]:
+                y_accum = y_accum + (1-tiles_map[iw][jw]) * d_weight
+                y_accum = y_accum + (1-memory_map[iw][jw]) * q_weight
 
     x_position = position[0]
     y_position = position[1]
 
-    if int(np.abs(x_accum)) > int(np.abs(y_accum)):
+    if int(np.abs(x_accum)) >= int(np.abs(y_accum)):
         if x_accum < 0:
             x_position = x_position - 1
             if x_position < 0:
@@ -291,7 +273,11 @@ while running:
             case 2: # AGENT_MOVE
                 debug_log("AGENT_MOVE")
 
-                move_direction = heuristic_walk()
+                walk_choice = np.random.choice([0, 1, 1])
+                if walk_choice == 0:
+                    move_direction = heuristic_walk()
+                else:
+                    move_direction = random_walk()
 
                 position = [move_direction[0], move_direction[1]]
                 position_map.append((position[0], position[1]))
