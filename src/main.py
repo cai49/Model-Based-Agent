@@ -27,7 +27,7 @@ path = pygame.Surface(screen.get_size(), pygame.SRCALPHA)
 path.fill(pygame.Color(0,0,0,0))
 
 # Customizable number of cells stuff
-CELL_NUMBER = 10
+CELL_NUMBER = 5
 CELL_SIZE: int = floor(width / CELL_NUMBER)
 PADDING = CELL_SIZE / 2
 
