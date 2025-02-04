@@ -1,18 +1,16 @@
 from math import floor
 
-import seaborn as sns
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
-
 import numpy as np
 import pygame
+import seaborn as sns
 
 pygame.init()
 
 # Screen stuff
 width, height = 800, 800    # NEEDS TO BE SQUARE
 screen = pygame.display.set_mode((width, height))
-pygame.display.set_caption("Test Window")
+pygame.display.set_caption("House Map Live Feed")
 
 # Game stuff
 clock = pygame.time.Clock()
@@ -29,7 +27,7 @@ path = pygame.Surface(screen.get_size(), pygame.SRCALPHA)
 path.fill(pygame.Color(0,0,0,0))
 
 # Customizable number of cells stuff
-CELL_NUMBER = 5
+CELL_NUMBER = 10
 CELL_SIZE: int = floor(width / CELL_NUMBER)
 PADDING = CELL_SIZE / 2
 
@@ -40,7 +38,8 @@ grid_font = pygame.font.Font(None, 40)
 AGENT_THINK: int = 0
 AGENT_CLEAN: int = 1
 AGENT_MOVE:  int = 2
-AGENT_IDLE:  int = 3
+AGENT_FINISH: int = 3
+AGENT_IDLE:  int = 4
 
 AGENT_STATE: int = AGENT_THINK
 #endregion
@@ -155,7 +154,6 @@ def heuristic_walk() -> list[int]:
                 y_position = np.random.choice([y_position - 1, 0])
                 # y_position = y_position - 1
 
-    print(x_accum, y_accum)
     return [x_position, y_position]
 #endregion
 
@@ -206,6 +204,27 @@ def debug_log(text: str):
         print(text)
 #endregion
 
+#region Plot stuff
+fig, ((Initial_TM_ax, stp10_TM_ax, Final_TM_ax), (Initial_MEM_ax, stp10_MEM_ax, Final_MEM_ax)) = plt.subplots(2, 3, figsize=(10, 10))
+Initial_TM_ax.set_title("Initial Tile Map")
+stp10_TM_ax.set_title("Tile Map @10 Steps")
+Final_TM_ax.set_title("Final Tile Map Steps")
+
+Initial_MEM_ax.set_title("Initial Memory Map")
+stp10_MEM_ax.set_title("Memory Map @10 Steps")
+Final_MEM_ax.set_title("Final Memory Map Steps")
+
+sns.heatmap(tiles_map, ax=Initial_TM_ax, cmap="Blues" , square=True, vmin=0, vmax=1)
+sns.heatmap(memory_map, ax=Initial_MEM_ax, cmap="Reds", square=True, vmin=0, vmax=1)
+
+sns.heatmap(tiles_map, ax=stp10_TM_ax, cmap="Blues" , square=True, vmin=0, vmax=1)
+sns.heatmap(memory_map, ax=stp10_MEM_ax, cmap="Reds", square=True, vmin=0, vmax=1)
+
+sns.heatmap(tiles_map, ax=Final_TM_ax, cmap="Blues" , square=True, vmin=0, vmax=1)
+sns.heatmap(memory_map, ax=Final_MEM_ax, cmap="Reds", square=True, vmin=0, vmax=1)
+#endregion
+
+steps_counter = 0
 delay_counter = -1
 running = True
 while running:
@@ -248,9 +267,17 @@ while running:
                         accum += tile-1
 
                 if accum == 0:
-                    AGENT_STATE = AGENT_IDLE
+                    AGENT_STATE = AGENT_FINISH
                     delay_counter = 3
                     continue
+
+                # Steps counter
+                if steps_counter >= 10:
+                    sns.heatmap(tiles_map, ax=stp10_TM_ax, cmap="Blues" , square=True, vmin=0, vmax=1)
+                    sns.heatmap(memory_map, ax=stp10_MEM_ax, cmap="Reds", square=True, vmin=0, vmax=1)
+                    steps_counter = -1
+                elif steps_counter != -1:
+                    steps_counter += 1
 
                 for i, tile_row in enumerate(memory_map):
                     for j, tile in enumerate(tile_row):
@@ -288,11 +315,17 @@ while running:
 
                 AGENT_STATE = AGENT_THINK
                 delay_counter = 10
-            case 3: # AGENT_IDLE
+            case 3: # AGENT_FINISH
+                debug_log("AGENT_FINISH")
+                sns.heatmap(tiles_map, ax=Final_TM_ax, cmap="Blues" , square=True, vmin=0, vmax=1)
+                sns.heatmap(memory_map, ax=Final_MEM_ax, cmap="Reds", square=True, vmin=0, vmax=1)
+                plt.show()
+                AGENT_STATE = AGENT_IDLE
+            case 4: # AGENT_IDLE
                 debug_log("AGENT_IDLE")
-                pygame.draw.rect(gui, pygame.Color("white"), pygame.Rect(0, height/2-30, width, 60), 0)
-                render_text_centered(gui, grid_font, "House Cleaned", [width/2, height/2], color=pygame.Color("brown1"))
-                pygame.time.delay(100)
+                pygame.draw.rect(gui, pygame.Color("black"), pygame.Rect(0, height/2-30, width, 60), 0)
+                render_text_centered(gui, grid_font, "House Cleaned", [width/2, height/2], color=pygame.Color("white"))
+                # pygame.time.delay(100)
     else:
         delay_counter -= 1
     #endregion
